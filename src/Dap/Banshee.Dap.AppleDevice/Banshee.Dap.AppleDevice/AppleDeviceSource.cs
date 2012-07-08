@@ -430,7 +430,9 @@ namespace Banshee.Dap.AppleDevice
                 playlist.Tracks.Remove (track);
             }
 
-            if (SupportsPodcasts && track.MediaType == GPod.MediaType.Podcast) {
+            if (SupportsPodcasts &&
+                track.MediaType == GPod.MediaType.Podcast &&
+                MediaDatabase.PodcastsPlaylist != null) {
                 MediaDatabase.PodcastsPlaylist.Tracks.Remove (track);
             }
 
