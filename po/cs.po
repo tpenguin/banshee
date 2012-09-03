@@ -13,7 +13,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?"
 "product=banshee&keywords=I18N+L10N&component=general\n"
 "POT-Creation-Date: 2012-07-08 15:41+0000\n"
-"PO-Revision-Date: 2012-09-03 19:42+0100\n"
+"PO-Revision-Date: 2012-09-03 12:17+0200\n"
 "Last-Translator: Marek Černocký <marek@manet.cz>\n"
 "Language-Team: Czech <gnome-cs-list@gnome.org>\n"
 "Language: cs\n"
@@ -2932,18 +2932,14 @@ msgid "Extraordinary Multimedia Management and Playback"
 msgstr "Výjimečná správa multimédií a přehrávání"
 
 #: ../src/Core/Banshee.ThickClient/Banshee.Gui.Dialogs/AboutDialog.cs:98
-#, fuzzy, csharp-format
-#| msgid ""
-#| "Copyright © 2005–{0} Novell, Inc.\n"
-#| "Copyright © 2005–{0} Others\n"
-#| "Copyright © 2005 Aaron Bockover"
+#, csharp-format
 msgid ""
 "Copyright © 2005–{0} Novell, Inc.\n"
 "Copyright © 2005–{1} Others\n"
 "Copyright © 2005 Aaron Bockover"
 msgstr ""
 "Copyright © 2005–{0} Novell, Inc.\n"
-"Copyright © 2005–{0} Ostatní\n"
+"Copyright © 2005–{1} Ostatní\n"
 "Copyright © 2005 Aaron Bockover"
 
 #: ../src/Core/Banshee.ThickClient/Banshee.Gui.Dialogs/AboutDialog.cs:104
@@ -4209,13 +4205,14 @@ msgstr "Zobrazit nebo skrýt prohlížeč umělců/alb"
 msgid ""
 "This page is blocked because it is probably not the one you are looking for!"
 msgstr ""
+"Tato stránka je blokována, protože se pravděpodobně nejedná o tu, kterou "
+"jste hledali!"
 
 #. Translators: {0} is the URL of the web page that was requested
 #: ../src/Core/Banshee.WebBrowser/Banshee.WebBrowser/NavigationControl.cs:158
-#, fuzzy, csharp-format
-#| msgid "The specified resource is invalid."
+#, csharp-format
 msgid "The security certificate for {0} is invalid."
-msgstr "Zadaný zdroj není platný."
+msgstr "Bezpečnostní certifikát pro {0} je neplatný."
 
 #: ../src/Core/Banshee.WebBrowser/Banshee.WebSource/WebBrowserShell.cs:121
 #, csharp-format
@@ -5322,10 +5319,8 @@ msgid "Library of Congress"
 msgstr "Kongresová knihovna"
 
 #: ../src/Extensions/Banshee.InternetArchive/Banshee.InternetArchive/HomeView.cs:136
-#, fuzzy
-#| msgid "Sample"
 msgid "Examples:"
-msgstr "Ukázka"
+msgstr "Příklady:"
 
 #: ../src/Extensions/Banshee.InternetArchive/Banshee.InternetArchive/HomeView.cs:148
 msgid ""
