@@ -32,6 +32,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Xml;
 
@@ -93,6 +94,64 @@ namespace Banshee.PlayerMigration
             return true;
         }
 
+        // Given a character, return the Unicode value.
+        private int get_char_code(char character)
+        {
+            UTF32Encoding encoding = new UTF32Encoding();
+            byte[] bytes = encoding.GetBytes(character.ToString().ToCharArray());
+            return BitConverter.ToInt32(bytes, 0);
+        }
+
+        // Build an return an XmlTextParser which understands UTF-8 encoding. The great
+        // majority of OS X recent releases are all utilizing the UTF-8 encoding; however,
+        // iTunes frequently introduces characters from an old OS X encoding within the
+        // UTF-8 stream; so to deal with this situation we simply throw out the invalid
+        // characters. An import will ultimately succeed with this strategy, that before
+        // this method, would actually crash the import process without the user actually
+        // knowing anything (eg: the import dialog never disappeared and did not visibly
+        // do anything.)
+        private XmlTextReader BuildXmlReader (string url)
+        {
+            // Create a Stream from our URL string
+            WebRequest request = WebRequest.Create(url);
+            WebResponse response = request.GetResponse();
+            Stream responseStream = response.GetResponseStream();
+
+            char[] buffer = new char[1024 * 1024 * 512];
+
+            using (StreamReader reader = new StreamReader(responseStream)) {
+                int index = 0;
+                int readByte = 0;
+                do {
+                    readByte = reader.Read(buffer, index, 1024);
+                    index += readByte;
+                } while (readByte != 0);
+                
+                // Replace all known invalid characters 
+                int pos = 0;
+                for (int idx=0; idx<index-1; idx++) {
+                    if (get_char_code(buffer[idx]) != 0xFFFF
+                            && !((Char.IsControl(buffer[idx])
+                                  && !Char.IsWhiteSpace(buffer[idx])))) {
+                        buffer[pos++] = buffer[idx];
+                    }
+                }
+                buffer[pos] = '\0';
+
+                response.Close();
+            }
+
+            // Create a XMLTextReader for the processed memory buffer.
+            // Note: Code Page 65001 is UTF-8
+            Encoding coder = Encoding.GetEncoding(65001,
+                                                  new EncoderReplacementFallback(""),
+                                                  new DecoderReplacementFallback(""));
+            byte[] byteArray = coder.GetBytes(buffer);
+
+            MemoryStream memoryStream = new MemoryStream(byteArray);
+            return new XmlTextReader(new StreamReader(memoryStream));
+        }
+
         private delegate void ImportDialogHandler (ItunesImportDialog dialog);
 
         private bool HandleImportDialog (ItunesImportDialog dialog, ImportDialogHandler code)
@@ -120,7 +179,7 @@ namespace Banshee.PlayerMigration
             // Make sure the library version is supported (version 1.1)
             string message = null;
             bool prompt = false;
-            using (var xml_reader = new XmlTextReader (data.library_uri))
+            using (var xml_reader = BuildXmlReader (data.library_uri))
             {
                 xml_reader.ReadToFollowing ("key");
                 do {
@@ -164,7 +223,7 @@ namespace Banshee.PlayerMigration
                 data.empty_library = ServiceManager.SourceManager.MusicLibrary.TrackModel.Count == 0;
 
                 var import_manager = ServiceManager.Get<LibraryImportManager> ();
-                using (var xml_reader = new XmlTextReader (data.library_uri)) {
+                using (var xml_reader = BuildXmlReader (data.library_uri)) {
                     ProcessLibraryXml (import_manager, xml_reader);
                 }
                 import_manager.NotifyAllSources ();
@@ -175,7 +234,7 @@ namespace Banshee.PlayerMigration
 
         private void CountSongs ()
         {
-            using (var xml_reader = new XmlTextReader (data.library_uri)) {
+            using (var xml_reader = BuildXmlReader (data.library_uri)) {
                 xml_reader.ReadToDescendant("dict");
                 xml_reader.ReadToDescendant("dict");
                 xml_reader.ReadToDescendant("dict");
