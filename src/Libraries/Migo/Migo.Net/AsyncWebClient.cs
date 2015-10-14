@@ -709,6 +709,9 @@ namespace Migo.Net
             }
         }
 
+        private readonly string _byteOrderMarkUtf8 =
+            Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+
         private void DownloadCompleted (byte[] resultPtr,
                                         Exception errPtr,
                                         bool cancelledCpy,
@@ -729,6 +732,11 @@ namespace Migo.Net
                     if (resultPtr != null) {
                         try {
                             s = Encoding.GetString (resultPtr).TrimStart ();
+
+                            // Workaround UTF-8 BOM
+                            if (s.StartsWith(_byteOrderMarkUtf8)) {
+                                s = s.Remove(0, _byteOrderMarkUtf8.Length);
+                            }
 
                             // Workaround if the string is a XML to set the encoding from it
                             if (s.StartsWith("<?xml")) {
