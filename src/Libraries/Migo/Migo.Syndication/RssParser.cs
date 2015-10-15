@@ -7,6 +7,7 @@
 //
 // Copyright (C) 2007 Mike Urbanski
 // Copyright (C) 2008 Novell, Inc.
+// Copyright (C) 2015 Thralling Penguin LLC.
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -42,10 +43,12 @@ namespace Migo.Syndication
         private XmlDocument doc;
         private XmlNamespaceManager mgr;
         private string url;
+        private bool isAtom;
 
         public RssParser (string url, string xml)
         {
             this.url = url;
+            this.isAtom = false;
             xml = xml.TrimStart ();
             doc = new XmlDocument ();
             // Don't resolve any external references, see bgo#601554
@@ -86,6 +89,7 @@ namespace Migo.Syndication
         {
             this.url = url;
             this.doc = doc;
+            this.isAtom = false;
             CheckRss ();
         }
 
@@ -98,24 +102,38 @@ namespace Migo.Syndication
         {
             try {
                 if (feed.Title == null || feed.Title.Trim () == "" || feed.Title == Mono.Unix.Catalog.GetString ("Unknown Podcast")) {
-                    feed.Title = StringUtil.RemoveNewlines (GetXmlNodeText (doc, "/rss/channel/title"));
+                    if (isAtom) {
+                        feed.Title = StringUtil.RemoveNewlines (GetXmlNodeText (doc, "//atom:title"));
+                    } else {
+                        feed.Title = StringUtil.RemoveNewlines (GetXmlNodeText (doc, "/rss/channel/title"));
+                    }
+
                     if (String.IsNullOrEmpty (feed.Title)) {
                         feed.Title = Mono.Unix.Catalog.GetString ("Unknown Podcast");
                     }
                 }
 
-                feed.Description      = StringUtil.RemoveNewlines (GetXmlNodeText (doc, "/rss/channel/description"));
-                feed.Copyright        = GetXmlNodeText (doc, "/rss/channel/copyright");
-                feed.ImageUrl         = GetXmlNodeText (doc, "/rss/channel/itunes:image/@href");
-                if (String.IsNullOrEmpty (feed.ImageUrl)) {
-                    feed.ImageUrl = GetXmlNodeText (doc, "/rss/channel/image/url");
+                if (isAtom) {
+                    feed.Description      = StringUtil.RemoveNewlines (GetXmlNodeText (doc, "//atom:title"));
+                    feed.Copyright        = "";
+                    feed.LastBuildDate    = GetRfc822DateTime (doc, "//atom:published");
+                    feed.Link             = GetXmlNodeText (doc, "//atom:author/atom:uri");
+                    feed.PubDate          = GetRfc822DateTime (doc, "//atom:published");
+                    feed.Keywords         = feed.Description;
+                } else {
+                    feed.Description      = StringUtil.RemoveNewlines (GetXmlNodeText (doc, "/rss/channel/description"));
+                    feed.Copyright        = GetXmlNodeText (doc, "/rss/channel/copyright");
+                    feed.ImageUrl         = GetXmlNodeText (doc, "/rss/channel/itunes:image/@href");
+                    if (String.IsNullOrEmpty (feed.ImageUrl)) {
+                        feed.ImageUrl = GetXmlNodeText (doc, "/rss/channel/image/url");
+                    }
+                    feed.Language         = GetXmlNodeText (doc, "/rss/channel/language");
+                    feed.LastBuildDate    = GetRfc822DateTime (doc, "/rss/channel/lastBuildDate");
+                    feed.Link             = GetXmlNodeText (doc, "/rss/channel/link");
+                    feed.PubDate          = GetRfc822DateTime (doc, "/rss/channel/pubDate");
+                    feed.Keywords         = GetXmlNodeText (doc, "/rss/channel/itunes:keywords");
+                    feed.Category         = GetXmlNodeText (doc, "/rss/channel/itunes:category/@text");
                 }
-                feed.Language         = GetXmlNodeText (doc, "/rss/channel/language");
-                feed.LastBuildDate    = GetRfc822DateTime (doc, "/rss/channel/lastBuildDate");
-                feed.Link             = GetXmlNodeText (doc, "/rss/channel/link");
-                feed.PubDate          = GetRfc822DateTime (doc, "/rss/channel/pubDate");
-                feed.Keywords         = GetXmlNodeText (doc, "/rss/channel/itunes:keywords");
-                feed.Category         = GetXmlNodeText (doc, "/rss/channel/itunes:category/@text");
 
                 return feed;
             } catch (Exception e) {
@@ -129,7 +147,11 @@ namespace Migo.Syndication
         {
             XmlNodeList nodes = null;
             try {
-                nodes = doc.SelectNodes ("//item");
+                if (isAtom) {
+                    nodes = doc.SelectNodes ("//atom:entry", mgr);
+                } else {
+                    nodes = doc.SelectNodes ("//item");
+                }
             } catch (Exception e) {
                 Hyena.Log.Exception ("Unable to get any RSS items", e);
             }
@@ -158,26 +180,47 @@ namespace Migo.Syndication
         {
             try {
                 FeedItem item = new FeedItem ();
-                item.Description = StringUtil.RemoveNewlines (GetXmlNodeText (node, "description"));
-                item.UpdateStrippedDescription ();
-                item.Title = StringUtil.RemoveNewlines (GetXmlNodeText (node, "title"));
 
-                if (String.IsNullOrEmpty (item.Description) && String.IsNullOrEmpty (item.Title)) {
-                    throw new FormatException ("node:  Either 'title' or 'description' node must exist.");
+                if (isAtom) {
+                    item.Description = StringUtil.RemoveNewlines (GetXmlNodeText (node, "media:group/media:description"));
+                    item.UpdateStrippedDescription ();
+                    item.Title = StringUtil.RemoveNewlines (GetXmlNodeText (node, "media:group/media:title"));
+
+                    if (String.IsNullOrEmpty (item.Description) && String.IsNullOrEmpty (item.Title)) {
+                        throw new FormatException ("node:  Either 'title' or 'description' node must exist in Atom document.");
+                    }
+
+                    item.Author     = GetXmlNodeText (node, "atom:author/atom:name");
+                    item.Comments   = "";
+                    item.Link       = GetXmlNodeText (node, "atom:link");
+                    item.PubDate    = GetRfc822DateTime (node, "atom:published");
+                    item.Modified   = GetRfc822DateTime (node, "atom:updated");
+                    item.LicenseUri = "";
+
+                    XmlNode media_group = node.SelectSingleNode ("media:group", mgr);
+                    item.Enclosure      = ParseMediaContent (media_group);
+                } else {
+                    item.Description = StringUtil.RemoveNewlines (GetXmlNodeText (node, "description"));
+                    item.UpdateStrippedDescription ();
+                    item.Title = StringUtil.RemoveNewlines (GetXmlNodeText (node, "title"));
+
+                    if (String.IsNullOrEmpty (item.Description) && String.IsNullOrEmpty (item.Title)) {
+                        throw new FormatException ("node:  Either 'title' or 'description' node must exist.");
+                    }
+
+                    item.Author            = GetXmlNodeText (node, "author");
+                    item.Comments          = GetXmlNodeText (node, "comments");
+                    // Removed, since we form our own Guid, since feeds don't seem to be consistent
+                    // about including this element.
+                    //item.Guid              = GetXmlNodeText (node, "guid");
+                    item.Link              = GetXmlNodeText (node, "link");
+                    item.PubDate           = GetRfc822DateTime (node, "pubDate");
+                    item.Modified          = GetRfc822DateTime (node, "dcterms:modified");
+                    item.LicenseUri        = GetXmlNodeText (node, "creativeCommons:license");
+
+                    // TODO prefer <media:content> nodes over <enclosure>?
+                    item.Enclosure = ParseEnclosure (node) ?? ParseMediaContent (node);
                 }
-
-                item.Author            = GetXmlNodeText (node, "author");
-                item.Comments          = GetXmlNodeText (node, "comments");
-                // Removed, since we form our own Guid, since feeds don't seem to be consistent
-                // about including this element.
-                //item.Guid              = GetXmlNodeText (node, "guid");
-                item.Link              = GetXmlNodeText (node, "link");
-                item.PubDate           = GetRfc822DateTime (node, "pubDate");
-                item.Modified          = GetRfc822DateTime (node, "dcterms:modified");
-                item.LicenseUri        = GetXmlNodeText (node, "creativeCommons:license");
-
-                // TODO prefer <media:content> nodes over <enclosure>?
-                item.Enclosure = ParseEnclosure (node) ?? ParseMediaContent (node);
 
                 return item;
              } catch (Exception e) {
@@ -258,12 +301,24 @@ namespace Migo.Syndication
 
         private void CheckRss ()
         {
-            if (doc.SelectSingleNode ("/rss") == null) {
-                throw new FormatException ("Invalid RSS document.");
-            }
+            XmlNamespaceManager atomNamespace = new XmlNamespaceManager (doc.NameTable);
+            atomNamespace.AddNamespace ("atom", "http://www.w3.org/2005/Atom");
 
-            if (doc.SelectSingleNode ("/rss/channel/title") == null) {
-                throw new FormatException ("Invalid RSS document. Node 'title' is required");
+            if (doc.SelectSingleNode ("/atom:feed", atomNamespace) != null) {
+                this.isAtom = true;
+                Hyena.Log.DebugFormat ("an Atom feed was detected...");
+
+                if (doc.SelectSingleNode ("//atom:title", atomNamespace) == null) {
+                    throw new FormatException ("Invalid Atom RSS document. Node 'title' is required");
+                }
+            } else {
+                if (doc.SelectSingleNode ("/rss") == null) {
+                    throw new FormatException ("Invalid RSS document.");
+                }
+
+                if (doc.SelectSingleNode ("/rss/channel/title") == null) {
+                    throw new FormatException ("Invalid RSS document. Node 'title' is required");
+                }
             }
 
             mgr = new XmlNamespaceManager (doc.NameTable);
@@ -271,6 +326,8 @@ namespace Migo.Syndication
             mgr.AddNamespace ("creativeCommons", "http://backend.userland.com/creativeCommonsRssModule");
             mgr.AddNamespace ("media", "http://search.yahoo.com/mrss/");
             mgr.AddNamespace ("dcterms", "http://purl.org/dc/terms/");
+            mgr.AddNamespace ("yt", "http://www.youtube.com/xml/schemas/2015");
+            mgr.AddNamespace ("atom", "http://www.w3.org/2005/Atom");
         }
 
         public TimeSpan GetITunesDuration (XmlNode node)
