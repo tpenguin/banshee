@@ -709,8 +709,24 @@ namespace Migo.Net
             }
         }
 
-        private readonly string _byteOrderMarkUtf8 =
-            Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+        private readonly byte[] _BomUtf8 = Encoding.UTF8.GetPreamble();
+
+        private bool StartsWithBytes (byte[] haystack, byte[] needle)
+        {
+            // ensure we have enough bytes to actually compare
+            if (needle.Length > haystack.Length) {
+                return false;
+            }
+
+            // perform byte by byte comparision
+            for (int i=0; i<needle.Length; i++) {
+                if (haystack[i] != needle[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         private void DownloadCompleted (byte[] resultPtr,
                                         Exception errPtr,
@@ -731,24 +747,26 @@ namespace Migo.Net
 
                     if (resultPtr != null) {
                         try {
-                            s = Encoding.GetString (resultPtr).TrimStart ();
-
                             // Workaround UTF-8 BOM
-                            if (s.StartsWith(_byteOrderMarkUtf8)) {
-                                s = s.Remove(0, _byteOrderMarkUtf8.Length);
-                            }
+                            if (StartsWithBytes(resultPtr, _BomUtf8)) {
+                                Hyena.Log.DebugFormat ("Stripping UTF-8 BOM");
+                                // Process as UTF-8 encoding
+                                Encoding enc = Encoding.GetEncoding (65001);
+                                s = enc.GetString (resultPtr, _BomUtf8.Length, resultPtr.Length - _BomUtf8.Length).TrimStart ();
+                            } else {
+                                s = Encoding.GetString (resultPtr).TrimStart ();
 
-                            // Workaround if the string is a XML to set the encoding from it
-                            if (s.StartsWith("<?xml")) {
-                                Match match = encoding_regexp.Match (s);
-                                if (match.Success && match.Groups.Count > 0) {
-                                    string encodingStr = match.Groups[1].Value;
-                                    try {
-                                        Encoding enc = Encoding.GetEncoding (encodingStr);
-                                        if (!enc.Equals (Encoding)) {
-                                            s = enc.GetString (resultPtr);
-                                        }
-                                    } catch (ArgumentException) {}
+                                // Workaround if the string is a XML to set the encoding from it
+                                if (s.StartsWith("<?xml")) {
+                                    Match match = encoding_regexp.Match (s);
+                                    if (match.Success && match.Groups.Count > 0) {
+                                        string encodingStr = match.Groups[1].Value;
+                                        try {
+                                            Encoding enc = Encoding.GetEncoding (encodingStr);
+                                            Hyena.Log.DebugFormat ("Rereading Xml document with {0} encoding...", encodingStr);
+                                            s = enc.GetString (resultPtr).TrimStart();
+                                        } catch (ArgumentException) {}
+                                    }
                                 }
                             }
                         } catch (Exception ex) {
