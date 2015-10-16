@@ -173,6 +173,19 @@ namespace Migo.Syndication
                 XmlNode media_group = node.SelectSingleNode ("media:group", mgr);
                 item.Enclosure      = ParseMediaContent (media_group);
 
+                string ytId = GetXmlNodeText (node, "yt:videoId");
+                if (!(String.IsNullOrEmpty (ytId))) {
+                    // Aquire the HD MP4 video from YouTube!
+                    Hyena.Log.DebugFormat ("Acquiring YouTube HD MP4 on video {0}",
+                                           ytId);
+
+                    Youtube yt = new Youtube (ytId);
+                    item.Enclosure.Url = yt.GetBestMpeg4 ();
+                    item.Enclosure.MimeType = yt.MimeType;
+                    item.Enclosure.Keywords = yt.Keywords;
+                    item.Enclosure.Extension = yt.Extension;
+                }
+
                 return item;
              } catch (Exception e) {
                  Hyena.Log.Exception ("Caught error parsing Atom item", e);

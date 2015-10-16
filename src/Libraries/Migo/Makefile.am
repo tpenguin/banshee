@@ -45,6 +45,7 @@ SOURCES =  \
 	Migo.Syndication/FeedParser.cs \
 	Migo.Syndication/RssParser.cs \
 	Migo.Syndication/AtomParser.cs \
+	Migo.Syndication/Youtube.cs \
 	Migo.Syndication/Tests/XmlTests.cs \
 	Migo.TaskCore/AsyncCommandQueue/AsyncCommandQueue.cs \
 	Migo.TaskCore/AsyncCommandQueue/CommandDelegate.cs \

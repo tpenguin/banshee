@@ -58,6 +58,8 @@ namespace Migo.Syndication
         private FeedItem item;
         private string url;
 
+        private string extension;
+
         private readonly object sync = new object ();
 
 #region Constructors
@@ -148,6 +150,7 @@ namespace Migo.Syndication
                 LocalPath = null;
                 DownloadStatus = FeedDownloadStatus.None;
                 LastDownloadError = FeedDownloadError.None;
+                Extension = null;
                 Save ();
             }
         }
@@ -161,7 +164,15 @@ namespace Migo.Syndication
             string local_enclosure_path = Item.Feed.LocalEnclosurePath;
 
             string full_path = Path.Combine (path, filename);
-            string new_local_path = Path.Combine (local_enclosure_path, filename);
+
+            // If we have specified an extension, then append it to the new filename.
+            string new_filename = filename;
+            if (!(String.IsNullOrEmpty (Item.Enclosure.Extension))) {
+                Extension = Item.Enclosure.Extension;
+                Hyena.Log.DebugFormat ("Appending file extension '{0}' to '{1}'", Extension, filename);
+                new_filename = String.Format ("{0}.{1}", filename, Extension);
+            }
+            string new_local_path = Path.Combine (local_enclosure_path, new_filename);
 
             try {
                 if (!Directory.Exists (path)) {
@@ -292,6 +303,11 @@ namespace Migo.Syndication
             }
         }
 
+        [DatabaseColumn]
+        public string Extension {
+            get { return extension; }
+            set { extension = value; }
+        }
 #endregion
 
         public override string ToString ()
