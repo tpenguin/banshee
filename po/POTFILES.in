@@ -345,3 +345,5 @@ src/Libraries/Lastfm/Lastfm/AudioscrobblerConnection.cs
 src/Libraries/Lastfm/Lastfm/RadioConnection.cs
 src/Libraries/Migo/Migo.Syndication/Feed.cs
 src/Libraries/Migo/Migo.Syndication/RssParser.cs
+src/Libraries/Migo/Migo.Syndication/AtomParser.cs
+src/Libraries/Migo/Migo.Syndication/FeedParser.cs

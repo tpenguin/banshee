@@ -154,7 +154,7 @@ namespace Migo.Syndication
                 if (we == null) {
                      try {
                         DateTime last_built_at = feed.LastBuildDate;
-                        RssParser parser = new RssParser (feed.Url, args.Result);
+                        FeedParser parser = FeedParser.GetMatchingParser (feed.Url, args.Result);
                         parser.UpdateFeed (feed);
                         feed.SetItems (parser.GetFeedItems (feed));
                         error = FeedDownloadError.None;

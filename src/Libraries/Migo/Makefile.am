@@ -42,7 +42,9 @@ SOURCES =  \
 	Migo.Syndication/MigoModelProvider.cs \
 	Migo.Syndication/OpmlParser.cs \
 	Migo.Syndication/Rfc822DateTime.cs \
+	Migo.Syndication/FeedParser.cs \
 	Migo.Syndication/RssParser.cs \
+	Migo.Syndication/AtomParser.cs \
 	Migo.Syndication/Tests/XmlTests.cs \
 	Migo.TaskCore/AsyncCommandQueue/AsyncCommandQueue.cs \
 	Migo.TaskCore/AsyncCommandQueue/CommandDelegate.cs \
